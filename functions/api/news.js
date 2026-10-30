@@ -26,6 +26,30 @@ function makeArticles(payload,mode){
   }
   return articles;
 }
+
+const COUNTRY_NAMES={IN:"India",US:"United States",GB:"United Kingdom",CA:"Canada",AU:"Australia",JP:"Japan",CN:"China",FR:"France",DE:"Germany",BR:"Brazil",NG:"Nigeria",ZA:"South Africa",AE:"United Arab Emirates",PK:"Pakistan",BD:"Bangladesh",MX:"Mexico",ES:"Spain",TR:"Türkiye",BT:"Bhutan"};
+const LANG_CODES={English:"en",Hindi:"hi",Bengali:"bn",Assamese:"as",Spanish:"es",French:"fr",German:"de",Arabic:"ar",Chinese:"zh-CN",Japanese:"ja",Portuguese:"pt",Russian:"ru",Turkish:"tr",Korean:"ko",Italian:"it",Dutch:"nl",Indonesian:"id",Thai:"th",Urdu:"ur"};
+function xmlText(s){return String(s||"").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1").replace(/<[^>]+>/g,"").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").trim()}
+function rssTag(item,name){const m=item.match(new RegExp("<"+name+"(?:\\\\s+[^>]*)?>([\\\\s\\\\S]*?)</"+name+">","i"));return m?xmlText(m[1]):""}
+async function fetchGoogleRSS(country,language,category,limit){
+ const lang=LANG_CODES[language]||"en",region=country==="WORLD"?"US":country,place=COUNTRY_NAMES[region]||region;
+ const terms=CATEGORY_TERMS[category]||"latest news";
+ const query=(country==="WORLD"?"world":place)+" "+terms.replace(/ OR /g," OR ")+" when:1d";
+ const url=new URL("https://news.google.com/rss/search");
+ url.search=new URLSearchParams({q:query,hl:lang+"-"+region,gl:region,ceid:region+":"+lang}).toString();
+ const response=await fetch(url.toString(),{headers:{accept:"application/rss+xml, application/xml, text/xml"},signal:AbortSignal.timeout(5500)});
+ if(!response.ok)throw new Error("Google News RSS returned HTTP "+response.status);
+ const xml=await response.text(),items=[];
+ for(const match of xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)){
+  const item=match[1],title=rssTag(item,"title"),link=rssTag(item,"link"),published= rssTag(item,"pubDate"),source=rssTag(item,"source");
+  if(!title||!link)continue;
+  items.push({id:items.length+1,title,url:link,domain:source||"Google News RSS",publishedAt:normalizeDate(published),sourceCountry:null,sourceLanguage:language,sourceCountryName:null,discovery:"Google News RSS"});
+  if(items.length>=limit)break;
+ }
+ const seen=new Set();
+ return items.filter(a=>{const key=cleanTitle(a.title);if(!key||seen.has(key))return false;seen.add(key);return true});
+}
+
 function buildQuery(country,language,mode,category){
   const base=mode==="world"||country==="WORLD"?"":`sourcecountry:${country} `;
   const lang=language==="English"?"":`sourcelang:${language} `;
@@ -71,6 +95,12 @@ export async function onRequestGet({request,env,waitUntil}) {
     return json({...data,stale:true,notice:"Showing cached headlines while the feed refreshes in the background."},200,{"x-worldwire-cache":"STALE-WHILE-REVALIDATE"});
   }
   try{
+    const rss=await fetchGoogleRSS(country,language,category,limit);
+    if(rss.length){
+      const result={mode,country,language,provider:"Google News RSS",count:rss.length,articles:rss,notice:"Fast RSS discovery. Headlines link to Google News publisher redirects; confirm details with the original publisher.",fetchedAt:new Date().toISOString()};
+      if(cache){const body=JSON.stringify(result);await cache.put(freshKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=90"}}));await cache.put(staleKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=1800"}}))}
+      return json(result);
+    }
     const result=await fetchAndCache(endpoint.toString(),mode,country,language,freshKey,staleKey,cache);
     return json(result);
   }catch(e){
