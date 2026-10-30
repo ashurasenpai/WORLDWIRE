@@ -34,7 +34,7 @@ function rssTag(item,name){const m=item.match(new RegExp("<"+name+"(?:\\\\s+[^>]
 async function fetchGoogleRSS(country,language,category,limit){
  const lang=LANG_CODES[language]||"en",region=country==="WORLD"?"US":country,place=COUNTRY_NAMES[region]||region;
  const terms=CATEGORY_TERMS[category]||"latest news";
- const query=(country==="WORLD"?"world":place)+" "+terms.replace(/ OR /g," OR ")+" when:1d";
+ const query=(country==="WORLD"?"world":place)+" "+terms.replace(/ OR /g," OR ")+(category?" when:3d":" when:1d");
  const url=new URL("https://news.google.com/rss/search");
  url.search=new URLSearchParams({q:query,hl:lang+"-"+region,gl:region,ceid:region+":"+lang}).toString();
  const response=await fetch(url.toString(),{headers:{accept:"application/rss+xml, application/xml, text/xml"},signal:AbortSignal.timeout(5500)});
