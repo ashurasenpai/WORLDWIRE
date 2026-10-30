@@ -65,6 +65,10 @@ const samples=[
 ];
 let items=samples,selected=1,category='All',query='',tab='overview',markers=[],links=[],map=null,feedMode='local';
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const allCountryCodes="AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW".split(" ");
+const regionNames=new Intl.DisplayNames(["en"],{type:"region"});const countrySelect=$("#country");
+allCountryCodes.forEach(code=>{if(![...countrySelect.options].some(o=>o.value===code)){const o=document.createElement("option");o.value=code;o.textContent=regionNames.of(code)||code;countrySelect.insertBefore(o,countrySelect.querySelector('option[value="WORLD"]'))}});
+
 const heatNames={breaking:'BREAKING',hot:'HOT',viral:'VIRAL',developing:'DEVELOPING'},heatColors={breaking:'#ff5d63',hot:'#e8a04b',viral:'#b48aff',developing:'#61a9ff'};
 function project(s){return s.lat!==null&&s.lon!==null&&Number.isFinite(s.lat)&&Number.isFinite(s.lon)}
 function notify(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),2600)}
