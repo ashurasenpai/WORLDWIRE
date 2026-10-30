@@ -12,7 +12,7 @@ A location-aware global news discovery dashboard. Frontend: Cloudflare Pages. Se
 
 ## Deployment
 
-This repository is connected to Cloudflare Pages. The `functions/` directory adds Pages Functions automatically on deployment. Pushes to `main` trigger a production deployment. Check Cloudflare Pages → Deployments to confirm the production commit and build status.
+This repository is intended to deploy as a **Cloudflare Pages** project with Pages Functions. The `functions/` directory contains Pages Functions and must be deployed with the Pages deployment workflow, not `npx wrangler deploy` (which targets a Worker). For a manual Wrangler deployment, use `npx wrangler pages deploy . --project-name worldwire`. Keep the Cloudflare project type and deployment workflow consistent; confirm the production deployment status in Cloudflare Pages → Deployments.
 
 ## Hosted AI: Cloudflare Workers AI (no local server)
 
