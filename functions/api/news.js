@@ -12,7 +12,7 @@ export async function onRequestGet({request}) {
   if(!ALLOWED_LANGUAGES.has(language)) return json({error:"Unsupported language"},400);
   if(!["local","trending","world"].includes(mode)) return json({error:"Invalid mode"},400);
   let query;
-  if(mode==="world") query=country==="WORLD"?"world news":`sourcecountry:${country} world news`;
+  if(mode==="world") query="world news";
   else if(country==="WORLD") query=`sourcelang:${language} world news`;
   else query=`sourcecountry:${country} sourcelang:${language}`;
   const sort=mode==="trending"?"HybridRel":"DateDesc";
