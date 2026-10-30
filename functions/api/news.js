@@ -31,7 +31,7 @@ export async function onRequestGet({request}) {
   let query;
   if(mode==="world")query="world news";else if(country==="WORLD")query=`sourcelang:${language} world news`;else query=`sourcecountry:${country} sourcelang:${language}`;
   const endpoint=new URL("https://api.gdeltproject.org/api/v2/doc/doc");
-  endpoint.search=new URLSearchParams({query,mode:"ArtList",maxrecords:String(limit),format:"json",sort:mode==="trending"?"HybridRel":"DateDesc",...(mode==="trending"?{timespan:"7d"}:{})}).toString();
+  endpoint.search=new URLSearchParams({query,mode:"ArtList",maxrecords:String(limit),format:"json",sort:mode==="trending"?"HybridRel":"DateDesc",timespan:mode==="trending"?"7d":"24h"}).toString();
   try{
     const upstream=await fetch(endpoint.toString(),{headers:{"accept":"application/json"}});
     const raw=await upstream.text();
@@ -49,8 +49,8 @@ export async function onRequestGet({request}) {
     const response=json(result);
     if(cache&&articles.length){
       const body=JSON.stringify(result);
-      await cache.put(freshKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=300"}}));
-      await cache.put(staleKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=3600"}}));
+      await cache.put(freshKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=120"}}));
+      await cache.put(staleKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=1800"}}));
     }
     return response;
   }catch(e){
