@@ -2,6 +2,7 @@ const ALLOWED_LANGUAGES = new Set(["English","Hindi","Bengali","Assamese","Spani
 const COUNTRY = /^[A-Z]{2}$/;
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=60, s-maxage=120","x-content-type-options":"nosniff"}})}
 function cleanTitle(s){return (s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/https?:\/\/\S+/g,"").replace(/[^a-z0-9]+/g," ").trim()}
+function normalizeDate(value){if(!value)return null;const m=String(value).match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?$/);if(m)return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;const d=new Date(value);return Number.isNaN(d.getTime())?null:d.toISOString()}
 export async function onRequestGet({request}) {
   const u=new URL(request.url);
   const country=(u.searchParams.get("country")||"IN").toUpperCase();
@@ -32,7 +33,7 @@ export async function onRequestGet({request}) {
       const key=cleanTitle(a.title);
       if(!key||seen.has(key)) continue;
       seen.add(key);
-      articles.push({id:articles.length+1,title:a.title,url:a.url,domain:a.domain||"",publishedAt:a.seendate||null,sourceCountry:a.sourcecountry||null,sourceLanguage:a.sourcelang||null,sourceCountryName:a.sourcecountry||"Unknown",image:a.socialimage||null,discovery:"GDELT"});
+      articles.push({id:articles.length+1,title:a.title,url:a.url,domain:a.domain||"",publishedAt:normalizeDate(a.seendate),sourceCountry:a.sourcecountry||null,sourceLanguage:a.sourcelang||null,sourceCountryName:a.sourcecountry||"Unknown",image:a.socialimage||null,discovery:"GDELT"});
     }
     if(!articles.length) return json({mode,country,language,provider:"GDELT",count:0,articles:[],error:"No headlines matched this country and language. Try English or World Mode.",notice:"GDELT may return no results for narrow filters."});
     if(mode==="trending"){const tokens=articles.map(a=>cleanTitle(a.title).split(" ").filter(w=>w.length>4));articles.forEach((a,i)=>{a.coverageCount=1;for(let j=0;j<articles.length;j++){if(i===j)continue;const overlap=tokens[i].filter(w=>tokens[j].includes(w)).length;const denom=Math.max(1,Math.min(tokens[i].length,tokens[j].length));if(overlap/denom>=0.55)a.coverageCount++}});articles.sort((a,b)=>b.coverageCount-a.coverageCount||new Date(b.publishedAt||0)-new Date(a.publishedAt||0));}
