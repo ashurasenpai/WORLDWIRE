@@ -69,6 +69,23 @@ const allCountryCodes="AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD 
 const regionNames=new Intl.DisplayNames(["en"],{type:"region"});const countrySelect=$("#country");
 allCountryCodes.forEach(code=>{if(![...countrySelect.options].some(o=>o.value===code)){const o=document.createElement("option");o.value=code;o.textContent=regionNames.of(code)||code;countrySelect.insertBefore(o,countrySelect.querySelector('option[value="WORLD"]'))}});
 
+const countryCentroids={US:[39.8,-98.6],CA:[56.1,-106.3],GB:[55.4,-3.4],IN:[22.9,79],CN:[35.9,104.2],JP:[36.2,138.3],AU:[-25.3,133.8],FR:[46.2,2.2],DE:[51.2,10.4],BR:[-10.8,-52.9],NG:[9.1,8.7],ZA:[-30.6,22.9],AE:[23.4,53.8],PK:[30.4,69.3],BD:[23.7,90.4],MX:[23.6,-102.5],ES:[40.5,-3.7],TR:[39,35.2],BT:[27.5,90.4],NP:[28.4,84.1],RU:[61.5,105.3],UA:[48.4,31.2],IL:[31,34.8],PS:[31.9,35.2],IR:[32.4,53.7],IQ:[33.2,43.7],SA:[23.9,45.1],EG:[26.8,30.8],KE:[0,37.9],ET:[9.1,40.5],SD:[12.9,30.2],NZ:[-40.9,174.9],KR:[35.9,127.8],ID:[-0.8,113.9],TH:[15.9,100.9],VN:[14.1,108.3],IT:[41.9,12.6],NL:[52.1,5.3],PL:[51.9,19.1],SE:[60.1,18.6],NO:[60.5,8.5],CH:[46.8,8.2],AR:[-38.4,-63.6],CL:[-35.7,-71.5],CO:[4.6,-74.1],PE:[-9.2,-75],PH:[12.9,121.8],MY:[4.2,102],SG:[1.35,103.8],LK:[7.9,80.7],MM:[21.9,95.9],AF:[33.9,67.7],SY:[34.8,38.9],YE:[15.6,48.5],MA:[31.8,-7.1],TN:[33.9,9.5],DZ:[28,1.7],GH:[7.9,-1],TZ:[-6.4,34.9],UG:[1.4,32.3],CD:[-4,21.8],GR:[39.1,21.8],PT:[39.4,-8.2],IE:[53.1,-8.2],BE:[50.5,4.5],AT:[47.5,14.6],CZ:[49.8,15.5],RO:[45.9,24.9],HU:[47.2,19.5],FI:[61.9,25.7],DK:[56.3,9.5],IS:[64.9,-19]};
+function updateNightZone(){
+ if(!globe)return;
+ const now=new Date(),day=(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate())-Date.UTC(now.getUTCFullYear(),0,0))/86400000;
+ const g=2*Math.PI/365*(day-1+(now.getUTCHours()-12)/24);
+ const decl=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+ const eq=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+ const sunLon=((180-(now.getUTCHours()*60+now.getUTCMinutes()+eq)/4+540)%360)-180;
+ const centerLat=-decl,centerLon=((sunLon+360)%360)-180,ring=[],rad=Math.PI/180,lat1=centerLat*rad,lon1=centerLon*rad;
+ for(let bearing=0;bearing<=360;bearing+=3){
+  const br=bearing*rad,lat2=Math.asin(Math.sin(lat1)*Math.cos(Math.PI/2)+Math.cos(lat1)*Math.sin(Math.PI/2)*Math.cos(br));
+  const lon2=lon1+Math.atan2(Math.sin(br)*Math.sin(Math.PI/2)*Math.cos(lat1),Math.cos(Math.PI/2)-Math.sin(lat1)*Math.sin(lat2));
+  ring.push([((lon2/rad+540)%360)-180,lat2/rad]);
+ }
+ globe.polygonsData([{type:"Feature",geometry:{type:"Polygon",coordinates:[ring]},properties:{zone:"Night side"}}]);
+}
+
 const heatNames={breaking:'BREAKING',hot:'HOT',viral:'VIRAL',developing:'DEVELOPING'},heatColors={breaking:'#ff5d63',hot:'#e8a04b',viral:'#b48aff',developing:'#61a9ff'};
 function project(s){return Number.isFinite(s.lat)&&Number.isFinite(s.lon)}
 function ageLabel(value){if(!value||value==='SAMPLE')return value||'TIME UNKNOWN';const d=new Date(value);if(Number.isNaN(d.getTime()))return value;const mins=Math.max(0,Math.floor((Date.now()-d.getTime())/60000));if(mins<1)return 'JUST NOW';if(mins<60)return mins+'m ago';const hrs=Math.floor(mins/60);if(hrs<24)return hrs+'h ago';return Math.floor(hrs/24)+'d ago'}
