@@ -95,7 +95,7 @@ export async function onRequestGet({request,env,waitUntil}) {
     return json({...data,stale:true,notice:"Showing cached headlines while the feed refreshes in the background."},200,{"x-worldwire-cache":"STALE-WHILE-REVALIDATE"});
   }
   try{
-    const rss=await fetchGoogleRSS(country,language,category,limit);
+    let rss=[];try{rss=await fetchGoogleRSS(country,language,category,limit)}catch(e){}
     if(rss.length){
       const result={mode,country,language,provider:"Google News RSS",count:rss.length,articles:rss,notice:"Fast RSS discovery. Headlines link to Google News publisher redirects; confirm details with the original publisher.",fetchedAt:new Date().toISOString()};
       if(cache){const body=JSON.stringify(result);await cache.put(freshKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=90"}}));await cache.put(staleKey,new Response(body,{headers:{"content-type":"application/json; charset=utf-8","cache-control":"public, max-age=1800"}}))}
