@@ -111,6 +111,7 @@ initMap();render();choose(1);const mapPanel=$('.center'),sideTab=$('#mapSideTab'
       var mobile=window.matchMedia('(max-width:700px)').matches;
       panel.classList.remove('map-mini','map-side-hidden','dragged');
       panel.removeAttribute('style');
+      tab.removeAttribute('style');
       tab.classList.remove('show');
       main.classList.remove('map-docked');
       side.classList.toggle('active',mode==='side');
