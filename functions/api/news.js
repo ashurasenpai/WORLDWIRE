@@ -17,7 +17,7 @@ export async function onRequestGet({request}) {
   else query=`sourcecountry:${country} sourcelang:${language}`;
   const sort=mode==="trending"?"HybridRel":"DateDesc";
   const endpoint=new URL("https://api.gdeltproject.org/api/v2/doc/doc");
-  endpoint.search=new URLSearchParams({query,mode:"ArtList",maxrecords:String(limit),format:"json",sort}).toString();
+  endpoint.search=new URLSearchParams({query,mode:"ArtList",maxrecords:String(limit),format:"json",sort,...(mode==="trending"?{timespan:"7d"}:{})}).toString();
   try{
     const upstream=await fetch(endpoint.toString(),{headers:{"accept":"application/json"}});
     const raw=await upstream.text();
@@ -35,6 +35,7 @@ export async function onRequestGet({request}) {
       articles.push({id:articles.length+1,title:a.title,url:a.url,domain:a.domain||"",publishedAt:a.seendate||null,sourceCountry:a.sourcecountry||null,sourceLanguage:a.sourcelang||null,sourceCountryName:a.sourcecountry||"Unknown",image:a.socialimage||null,discovery:"GDELT"});
     }
     if(!articles.length) return json({mode,country,language,provider:"GDELT",count:0,articles:[],error:"No headlines matched this country and language. Try English or World Mode.",notice:"GDELT may return no results for narrow filters."});
+    if(mode==="trending"){const tokens=articles.map(a=>cleanTitle(a.title).split(" ").filter(w=>w.length>4));articles.forEach((a,i)=>{a.coverageCount=1;for(let j=0;j<articles.length;j++){if(i===j)continue;const overlap=tokens[i].filter(w=>tokens[j].includes(w)).length;const denom=Math.max(1,Math.min(tokens[i].length,tokens[j].length));if(overlap/denom>=0.55)a.coverageCount++}});articles.sort((a,b)=>b.coverageCount-a.coverageCount||new Date(b.publishedAt||0)-new Date(a.publishedAt||0));}
     return json({mode,country,language,provider:"GDELT",count:articles.length,articles,notice:"Discovery results only. Headlines and publisher links are real indexed articles, not independently fact-checked. Country refers to publisher origin when supplied, not necessarily the event location.",fetchedAt:new Date().toISOString()});
   }catch(e){return json({error:"Unable to reach the news provider"},502)}
 }
