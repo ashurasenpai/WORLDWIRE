@@ -42,7 +42,7 @@ export async function onRequestGet({request}) {
       return json({error:"The live news provider is temporarily rate-limiting requests. Please wait before refreshing.",providerStatus:429,retryAfterSeconds:retry},503,{"retry-after":String(retry)});
     }
     if(!upstream.ok)return json({error:"News provider returned HTTP "+upstream.status,providerStatus:upstream.status,providerMessage:raw.slice(0,240)},502);
-    let payload;try{payload=JSON.parse(raw)}catch{return json({error:"News provider returned a non-JSON response",providerMessage:raw.replace(/<[^>]*>/g," ").replace(/\\s+/g," ").trim().slice(0,240)},502)}
+    let payload;try{payload=JSON.parse(raw)}catch{return json({error:"News provider returned a non-JSON response",providerMessage:raw.replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().slice(0,240)},502)}
     if(payload.error||payload.status==="error")return json({error:"News provider rejected the query",providerMessage:String(payload.error||payload.message||"Unknown provider error").slice(0,240)},502);
     const articles=makeArticles(payload,mode);
     const result=articles.length?{mode,country,language,provider:"GDELT",count:articles.length,articles,notice:"Discovery results only. Headlines and publisher links are real indexed articles, not independently fact-checked. Country refers to publisher origin when supplied, not necessarily the event location.",fetchedAt:new Date().toISOString()}:{mode,country,language,provider:"GDELT",count:0,articles:[],error:"No headlines matched this country and language. Try English or World Mode.",notice:"GDELT may return no results for narrow filters."};
