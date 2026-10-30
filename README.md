@@ -14,17 +14,20 @@ A location-aware global news discovery dashboard. Frontend: Cloudflare Pages. Se
 
 This repository is connected to Cloudflare Pages. The `functions/` directory adds Pages Functions automatically on the next production deployment. Pushes to `main` trigger a deployment. Check Cloudflare Pages → Deployments to confirm the production commit and build status.
 
-## FreeLLMAPI integration (optional)
+## Hosted AI: Cloudflare Workers AI (no local server)
 
-FreeLLMAPI is a separate self-hosted OpenAI-compatible gateway. It is **not** hosted by GitHub and does not run merely because its repository is linked. See its official setup: https://github.com/tashfeenahmed/freellmapi
+WORLDWIRE uses Cloudflare Workers AI for optional AI briefings. Models run on Cloudflare's infrastructure; no laptop, VPS, or self-hosted FreeLLMAPI process is required.
 
-In Cloudflare Pages → Settings → Variables and Secrets, configure:
-- `FREE_LLM_API_BASE`: reachable base URL of your FreeLLMAPI instance, without trailing slash.
-- `FREE_LLM_API_KEY`: unified FreeLLMAPI key. Store as a secret. Never put it in frontend JavaScript or commit it to GitHub.
+One-time setup:
+1. Open Cloudflare Dashboard → Workers & Pages → Pages → `worldwire`.
+2. Open Settings → Bindings → Production → Add → Workers AI.
+3. Set the variable/binding name to exactly `AI`.
+4. Save, then trigger a new production deployment (the binding only becomes available after redeployment).
+5. Repeat for Preview only if you want AI briefings on preview deployments.
 
-Then the dashboard's **AI ANALYSIS** action calls `/api/brief`. That endpoint forwards up to eight headlines to `/v1/chat/completions` using model `auto`.
+The `/api/brief` Pages Function calls `@cf/zai-org/glm-4.7-flash` through `env.AI.run()`. Cloudflare documents this model among models available on Workers Free. Workers AI currently includes 10,000 Neurons/day on Free; model use consumes that shared daily allocation and calls fail when the allocation is exhausted. Limits and model availability can change. See https://developers.cloudflare.com/workers-ai/platform/pricing/ and https://developers.cloudflare.com/workers-ai/configuration/bindings/.
 
-FreeLLMAPI is documented as a self-hosted, single-user gateway. Do not expose an unauthenticated instance publicly. Provider availability, free-tier limits and terms vary. It needs a continuously reachable host; GitHub Pages/repository hosting does not run it. A home PC can be used for testing but is not a reliable 24/7 production host.
+No AI provider API key needs to be added to GitHub or browser code. Keep the binding server-side. FreeLLMAPI is no longer required for this deployment.
 
 ## News data and editorial limitations
 
