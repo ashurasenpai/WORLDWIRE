@@ -30,7 +30,7 @@ function makeArticles(payload,mode){
 const COUNTRY_NAMES={IN:"India",US:"United States",GB:"United Kingdom",CA:"Canada",AU:"Australia",JP:"Japan",CN:"China",FR:"France",DE:"Germany",BR:"Brazil",NG:"Nigeria",ZA:"South Africa",AE:"United Arab Emirates",PK:"Pakistan",BD:"Bangladesh",MX:"Mexico",ES:"Spain",TR:"Türkiye",BT:"Bhutan"};
 const LANG_CODES={English:"en",Hindi:"hi",Bengali:"bn",Assamese:"as",Spanish:"es",French:"fr",German:"de",Arabic:"ar",Chinese:"zh-CN",Japanese:"ja",Portuguese:"pt",Russian:"ru",Turkish:"tr",Korean:"ko",Italian:"it",Dutch:"nl",Indonesian:"id",Thai:"th",Urdu:"ur"};
 function xmlText(s){return String(s||"").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1").replace(/<[^>]+>/g,"").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").trim()}
-function rssTag(item,name){const m=item.match(new RegExp("<"+name+"(?:\\\\s+[^>]*)?>([\\\\s\\\\S]*?)</"+name+">","i"));return m?xmlText(m[1]):""}
+function rssTag(item,name){const m=item.match(new RegExp("<"+name+"(?:\\s+[^>]*)?>([\\s\\S]*?)</"+name+">","i"));return m?xmlText(m[1]):""}
 async function fetchGoogleRSS(country,language,category,limit){
  const lang=LANG_CODES[language]||"en",region=country==="WORLD"?"US":country,place=COUNTRY_NAMES[region]||region;
  const terms=CATEGORY_TERMS[category]||"latest news";
