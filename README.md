@@ -7,8 +7,8 @@ A location-aware global news discovery dashboard. Frontend: Cloudflare Pages. Se
 - Country, language, trending and world discovery modes.
 - Geolocation permission is requested only after a visitor taps **Detect Country**. Manual country selection remains available.
 - Server-side news endpoint at `/api/news`: validates parameters, caps requests at 50 articles, removes duplicate titles and returns publisher URLs and metadata.
-- Optional AI briefing endpoint at `/api/brief`. It analyzes supplied headlines and must not be treated as independent fact verification.
-- Leaflet map with OpenStreetMap tiles and responsive dashboard.
+- Optional AI briefing endpoint at `/api/brief`. The dashboard currently sends the selected headline and publisher metadata for a cautious headline-based brief; it does not fetch or summarize the full publisher article. This is not independent fact verification.
+- Responsive dashboard with a WebGL 3D globe (Globe.gl), opt-in country detection, and estimated event-location markers when available.
 
 ## Deployment
 
@@ -25,7 +25,7 @@ One-time setup:
 4. Save, then trigger a new production deployment (the binding becomes available to Pages Functions after redeployment).
 5. Configure Preview separately only if you want AI briefings on preview deployments.
 
-The `/api/brief` Pages Function calls `@cf/zai-org/glm-4.7-flash` through `env.AI.run()`. Workers AI has a daily free allocation on eligible plans; usage consumes Neurons, not a fixed number of requests. Check Cloudflare's current pricing and model availability before relying on a particular allowance:
+The `/api/brief` Pages Function calls `@cf/zai-org/glm-4.7-flash` through `env.AI.run()`. The `/api/locate` endpoint uses the same model to estimate named event places from headlines, then geocodes those place names with Open-Meteo. Both outputs are estimates and must be labelled accordingly. Workers AI has a daily free allocation on eligible plans; usage consumes Neurons, not a fixed number of requests. Check Cloudflare's current pricing and model availability before relying on a particular allowance:
 - https://developers.cloudflare.com/workers-ai/platform/pricing/
 - https://developers.cloudflare.com/workers-ai/configuration/bindings/
 
@@ -36,7 +36,7 @@ No AI provider API key needs to be added to GitHub or browser code. Keep the bin
 - GDELT is a discovery index, not a guarantee of complete country coverage.
 - GDELT source-country metadata identifies publisher origin, not necessarily the event location.
 - Country/language filters can return fewer than 50 results; 50 is a maximum, not a promise of 50 unique events.
-- Trending currently uses GDELT relevance/hybrid sorting, not measured social virality or independently calculated coverage velocity.
+- Trending uses GDELT hybrid relevance plus a lightweight headline-keyword overlap signal within the fetched result set. This is a rough discovery heuristic, not measured social virality, independent-source corroboration, or true coverage velocity.
 - Headlines are not full article text. The system does not bypass paywalls or republish full copyrighted articles.
 - No story is labelled independently verified. A real verification system needs corroboration across independent publishers and primary sources.
 - Map markers must only be added when a reliable event location is available. Publisher country must not be used as a substitute for event coordinates.
