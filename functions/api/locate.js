@@ -1,42 +1,4 @@
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json","cache-control":"public, max-age=300","x-content-type-options":"nosniff"}})}
-function extractText(result){
-  const value=result?.response??result?.result??result?.output_text??"";
-  if(typeof value==="string")return value;
-  if(value&&typeof value==="object")return JSON.stringify(value);
-  return "";
-}
-export async function onRequestPost({request,env}) {
-  try {
-    const body=await request.json();
-    const articles=(Array.isArray(body.articles)?body.articles:[]).slice(0,20).filter(x=>x&&x.id!==undefined&&typeof x.title==="string");
-    if(!articles.length)return json({locations:[]});
-    if(!env.AI)return json({error:"Workers AI binding is not configured"},503);
-    const prompt=`For each news headline, identify the most likely real-world location where the reported event happened, NOT the publisher's location. Use a clearly named city, region, river, lake or country from the headline or well-established event context. If the headline only gives a country, use that country. If no event place is reasonably identifiable, return place:null. Never use the publisher's country as a substitute. Return ONLY JSON: {"locations":[{"id":123,"place":"City, Country","confidence":"High|Medium|Low"}]}. High means explicitly named; Medium means strong context; Low means country-level or inferred. Headlines: ${JSON.stringify(articles)}`;
-    const result=await env.AI.run("@cf/zai-org/glm-4.7-flash",{messages:[{role:"system",content:"Extract conservative event locations from news headlines. Output valid JSON only, no markdown."},{role:"user",content:prompt}],max_tokens:2200});
-    const raw=extractText(result).replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
-    let parsed;
-    try{parsed=JSON.parse(raw)}catch{
-      const match=raw.match(/\{[\s\S]*\}/);
-      if(!match)return json({locations:[],notice:"Location analysis returned invalid structured data."});
-      try{parsed=JSON.parse(match[0])}catch{return json({locations:[],notice:"Location analysis returned invalid structured data."})}
-    }
-    const candidates=(Array.isArray(parsed.locations)?parsed.locations:[]).slice(0,20);
-    const locations=await Promise.all(candidates.map(async loc=>{
-      if(!loc||loc.place==null||typeof loc.place!=="string"||!["High","Medium","Low"].includes(loc.confidence))return null;
-      const original=articles.find(a=>String(a.id)===String(loc.id));
-      if(!original)return null;
-      const geoUrl=new URL("https://geocoding-api.open-meteo.com/v1/search");
-      geoUrl.search=new URLSearchParams({name:loc.place.slice(0,100),count:"1",language:"en",format:"json"}).toString();
-      try{
-        const geo=await fetch(geoUrl.toString(),{headers:{"accept":"application/json"},signal:AbortSignal.timeout(7000)});
-        if(!geo.ok)return null;
-        const gj=await geo.json(),point=gj.results?.[0];
-        if(!point||!Number.isFinite(point.latitude)||!Number.isFinite(point.longitude))return null;
-        return {id:original.id,place:[point.name,point.country].filter(Boolean).join(", "),lat:point.latitude,lon:point.longitude,confidence:loc.confidence};
-      }catch{return null}
-    }));
-    return json({locations:locations.filter(Boolean),notice:"Locations are AI-assisted estimates geocoded to a named place, not verified incident coordinates."});
-  } catch(e) {
-    return json({error:"Unable to estimate event locations"},500);
-  }
-}
+function extractText(r){const v=r?.response??r?.result??r?.output_text??"";return typeof v==="string"?v:JSON.stringify(v)}
+const REGION_HINTS=[[/\b(jammu\s*(?:and|&)\s*kashmir|j\s*&\s*k|kashmir valley|srinagar|baramulla|pahalgam|pulwama|anantnag|kupwara|shopian)\b/i,"Srinagar, Jammu and Kashmir, India"],[/\b(ladakh|leh|kargil)\b/i,"Leh, Ladakh, India"],[/\b(himachal pradesh|shimla|manali)\b/i,"Shimla, Himachal Pradesh, India"],[/\b(uttarakhand|dehradun|nainital|joshimath)\b/i,"Dehradun, Uttarakhand, India"],[/\b(assam|guwahati|dibrugarh|silchar)\b/i,"Guwahati, Assam, India"],[/\b(manipur|imphal)\b/i,"Imphal, Manipur, India"],[/\b(mizoram|aizawl)\b/i,"Aizawl, Mizoram, India"],[/\b(nagaland|kohima|dimapur)\b/i,"Kohima, Nagaland, India"],[/\b(arunachal pradesh|itanagar|pasighat)\b/i,"Itanagar, Arunachal Pradesh, India"],[/\b(meghalaya|shillong)\b/i,"Shillong, Meghalaya, India"],[/\b(tripura|agartala)\b/i,"Agartala, Tripura, India"],[/\b(sikkim|gangtok)\b/i,"Gangtok, Sikkim, India"]]; 
+export async function onRequestPost({request,env}){try{const body=await request.json(),articles=(Array.isArray(body.articles)?body.articles:[]).slice(0,20).filter(x=>x&&x.id!==undefined&&typeof x.title==="string");if(!articles.length)return json({locations:[]});if(!env.AI?.run)return json({error:"Workers AI binding is not configured"},503);const prompt="For each headline, extract the most precise explicitly named event location: city, district, state/province, region or named physical site. Never use publisher location. If a state/province/district is named, do NOT replace it with the country or national capital. For India, preserve named states and union territories such as Jammu and Kashmir and Ladakh. If no event location is present or strongly established, return place:null. Return JSON only: {\"locations\":[{\"id\":1,\"place\":\"Srinagar, Jammu and Kashmir, India\",\"confidence\":\"High|Medium|Low\"}]}. Low confidence should be omitted, not guessed. Headlines: "+JSON.stringify(articles);const result=await env.AI.run("@cf/zai-org/glm-4.7-flash",{messages:[{role:"system",content:"Extract precise event geography conservatively. Never substitute publisher country or national capital for a named subnational location. JSON only."},{role:"user",content:prompt}],max_tokens:2200,temperature:0.1});const raw=extractText(result).replace(/^\`\`\`(?:json)?/i,"").replace(/\`\`\`$/,"").trim(),match=raw.match(/\{[\s\S]*\}/);if(!match)return json({locations:[]});const parsed=JSON.parse(match[0]),candidates=(parsed.locations||[]).slice(0,20);const locations=await Promise.all(candidates.map(async loc=>{const original=articles.find(a=>String(a.id)===String(loc.id));if(!original||typeof loc.place!=="string"||!loc.place.trim()||!["High","Medium"].includes(loc.confidence))return null;let place=loc.place;for(const [re,canonical] of REGION_HINTS){if(re.test(original.title)){place=canonical;break}}const u=new URL("https://geocoding-api.open-meteo.com/v1/search");u.search=new URLSearchParams({name:place.slice(0,100),count:"5",language:"en",format:"json"}).toString();try{const response=await fetch(u,{signal:AbortSignal.timeout(4500)});if(!response.ok)return null;const data=await response.json(),results=data.results||[];const wanted=place.toLowerCase().split(",").map(x=>x.trim());const point=results.find(p=>wanted.some(w=>w.length>3&&(p.name||"").toLowerCase().includes(w)||w.length>3&&(p.admin1||"").toLowerCase().includes(w)))||results[0];if(!point||!Number.isFinite(point.latitude)||!Number.isFinite(point.longitude))return null;return{id:original.id,place:[point.name,point.admin1,point.country].filter(Boolean).join(", "),lat:point.latitude,lon:point.longitude,confidence:loc.confidence}}catch{return null}}));return json({locations:locations.filter(Boolean),notice:"Pins are event-place estimates. Publisher locations are never used as substitutes."})}catch(e){return json({error:"Unable to estimate event locations"},500)}}
